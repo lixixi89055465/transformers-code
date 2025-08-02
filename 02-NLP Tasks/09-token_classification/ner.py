@@ -6,9 +6,8 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
     TrainingArguments, Trainer, DataCollatorForTokenClassification
 
 # ner_datasets=load_dataset("peoples_daily_ner",cache_dir='./data')
-ner_datasets = load_dataset("/home/nanji/workspace/people-daily-ner",
-                            cache_dir='/home/nanji/workspace/people-daily-ner')
-# ner_datasets=load_dataset("./ner_data_new",cache_dir='./ner_data_new')
+# ner_datasets = load_dataset("/home/nanji/workspace/people-daily-ner", cache_dir='/home/nanji/workspace/people-daily-ner')
+ner_datasets=load_dataset("./ner_data",cache_dir='./ner_data')
 
 print(ner_datasets)
 print('0' * 100)
