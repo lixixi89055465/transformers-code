@@ -78,3 +78,64 @@ for idx, _ in enumerate(sample_mapping):
     print('token answer decode:',
           tokenizer.decode(tokenized_examples['input_ids'][idx][start_token_pos:end_token_pos + 1]))
 
+
+def process_func(examples):
+    tokenized_examples = tokenizer(
+        text=examples['question'],
+        text_pair=examples['context'],
+        return_offsets_mapping=True,
+        return_overflowing_tokens=True,
+        stride=128,
+        max_length=384,
+        truncation='only_second',
+        padding='max_length')
+    sample_mapping = tokenized_examples.pop('overflow_to_sample_mapping')
+    start_positions = []
+    end_positions = []
+    example_ids = []
+    for idx, _ in enumerate(sample_mapping):
+        answer = examples['answers'][sample_mapping[idx]]
+        start_char = answer['answer_start'][0]
+        end_char = start_char + len(answer['text'][0])
+        # 定位答案在 token 中的其实位置和结束位置
+        # 一种策略 ，我们要拿到 context的起始和结束，然后从左右两侧向答案逼近
+        context_start = tokenized_examples.sequence_ids(idx).index(1)
+        context_end = tokenized_examples.sequence_ids(idx).index(None, context_start) - 1
+        offset = tokenized_examples.get('offset_mapping')[idx]
+        # 判断答案是否在 context 中
+        if offset[context_start][1] < start_char or offset[context_start][0] > end_char:
+            start_token_pos = 0
+            end_token_pos = 0
+        else:
+            token_id = context_start
+            while token_id <= context_end and offset[token_id][0] < start_char:
+                token_id += 1
+            start_token_pos = token_id
+            token_id = context_end
+            while token_id >= context_start and offset[token_id][1] > end_char:
+                token_id -= 1
+            end_token_pos = token_id
+        start_positions.append(start_token_pos)
+        end_positions.append(end_token_pos)
+        example_ids.append(examples['id'][sample_mapping[idx]])
+        tokenized_examples['offset_mapping'][idx] = [
+            (o if tokenized_examples.sequence_ids(idx)[k] == 1 else None)
+            for k, o in enumerate(tokenized_examples['offset_mapping'][idx])
+        ]
+    tokenized_examples['example_ids'] = example_ids
+    tokenized_examples['start_positions'] = start_positions
+    tokenized_examples['end_positions'] = end_positions
+    return tokenized_examples
+
+
+tokenized_datasets = datasets.map(
+    process_func,
+    batched=True,
+    remove_columns=datasets['train'].column_names
+)
+print('0' * 100)
+print(tokenized_datasets)
+print('1'*100)
+print(tokenized_datasets['train']['offset_mapping'][1])
+print('2'*100)
+print(tokenized_datasets['train']['example_ids'][:10])
