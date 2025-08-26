@@ -135,7 +135,113 @@ tokenized_datasets = datasets.map(
 )
 print('0' * 100)
 print(tokenized_datasets)
-print('1'*100)
+print('1' * 100)
 print(tokenized_datasets['train']['offset_mapping'][1])
-print('2'*100)
+print('2' * 100)
 print(tokenized_datasets['train']['example_ids'][:10])
+
+import collections
+
+# example 和 feature 的映射
+example_to_feature = collections.defaultdict(list)
+for idx, example_id in enumerate(tokenized_datasets['train']['example_ids'][:10]):
+    example_to_feature[example_id].append(idx)
+print('3' * 100)
+print(example_to_feature)
+# Step4 获取模型输出
+import numpy as np
+import collections
+
+import numpy as np
+import collections
+
+
+def get_result(start_logits, end_logits, exmaples, features):
+    predictions = {}
+    references = {}
+
+    # example 和 feature的映射
+    example_to_feature = collections.defaultdict(list)
+    for idx, example_id in enumerate(features["example_ids"]):
+        example_to_feature[example_id].append(idx)
+
+    # 最优答案候选
+    n_best = 20
+    # 最大答案长度
+    max_answer_length = 30
+
+    for example in exmaples:
+        example_id = example["id"]
+        context = example["context"]
+        answers = []
+        for feature_idx in example_to_feature[example_id]:
+            start_logit = start_logits[feature_idx]
+            end_logit = end_logits[feature_idx]
+            offset = features[feature_idx]["offset_mapping"]
+            start_indexes = np.argsort(start_logit)[::-1][:n_best].tolist()
+            end_indexes = np.argsort(end_logit)[::-1][:n_best].tolist()
+            for start_index in start_indexes:
+                for end_index in end_indexes:
+                    if offset[start_index] is None or offset[end_index] is None:
+                        continue
+                    if end_index < start_index or end_index - start_index + 1 > max_answer_length:
+                        continue
+                    answers.append({
+                        "text": context[offset[start_index][0]: offset[end_index][1]],
+                        "score": start_logit[start_index] + end_logit[end_index]
+                    })
+        if len(answers) > 0:
+            best_answer = max(answers, key=lambda x: x["score"])
+            predictions[example_id] = best_answer["text"]
+        else:
+            predictions[example_id] = ""
+        references[example_id] = example["answers"]["text"]
+
+    return predictions, references
+
+
+## Step5 评估函数
+from cmrc_eval import evaluate_cmrc
+
+
+def metirc(pred):
+    start_logits, end_logits = pred[0]
+    if start_logits.shape[0] == len(tokenized_datasets["validation"]):
+        p, r = get_result(start_logits, end_logits, datasets["validation"], tokenized_datasets["validation"])
+    else:
+        p, r = get_result(start_logits, end_logits, datasets["test"], tokenized_datasets["test"])
+    return evaluate_cmrc(p, r)
+
+
+## Step6 加载模型
+model = AutoModelForQuestionAnswering.from_pretrained('/home/nanji/workspace/chinese-macbert-base')
+# Step7 配置TrainingArguments
+args = TrainingArguments(
+    output_dir='models_for_qa',
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=32,
+    eval_strategy='steps',
+    eval_steps=200,
+    save_strategy='epoch',
+    logging_steps=50,
+    num_train_epochs=1
+)
+## Step8 配置Trainer
+trainer = Trainer(
+    model=model,
+    args=args,
+    tokenizer=tokenizer,
+    train_dataset=tokenized_datasets['train'],
+    eval_dataset=tokenized_datasets['validation'],
+    data_collator=DefaultDataCollator(),
+    compute_metrics=metirc
+)
+# Step9 模型训练
+trainer.train()
+from transformers import pipeline
+
+pipe = pipeline("question-answering", model=model, tokenizer=tokenizer, device=0)
+print(pipe)
+
+res = pipe(question="小明在哪里上班？", context="小明在北京上班")
+print(res)
