@@ -5,6 +5,11 @@
 # @File : mrc_slide_version.py.py
 # @Software: PyCharm 
 # @Comment :
+'''
+import nltk
+nltk.download('punkt_tab')
+
+'''
 # 基于截断策略的机器阅读理解任务实
 # Step1 导入相关包
 from datasets import load_dataset, DatasetDict
@@ -13,7 +18,8 @@ from transformers import (AutoTokenizer,
                           TrainingArguments,
                           Trainer,
                           DefaultDataCollator)
-
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:3950"
 ## Step2 数据集加载
 
 # 如果可以联网，直接使用load_dataset进行加载
@@ -50,33 +56,35 @@ print(len(tokenized_examples['overflow_to_sample_mapping']))
 #     print(sen)
 
 sample_mapping = tokenized_examples.pop('overflow_to_sample_mapping')
-for idx, _ in enumerate(sample_mapping):
-    answer = sample_dataset['answers'][sample_mapping[idx]]
-    start_char = answer['answer_start'][0]
-    end_char = start_char + len(answer['text'][0])
-    # 定位答案在 token 中的其实位置和结束位置
-    # 一种策略，我们要拿到 context 的起始和 结束，然后从左右两侧向答案逼近
-    context_start = tokenized_examples.sequence_ids(idx).index(1)
-    context_end = tokenized_examples.sequence_ids(idx).index(None, context_start) - 1
-    offset = tokenized_examples.get('offset_mapping')[idx]
-    example_ids = []
-    # 判断答案是否在 context 中
-    if offset[context_end][1] < start_char or offset[context_start][0] > end_char:
-        start_token_pos = 0
-        end_token_pos = 0
-    else:
-        token_id = context_start
-        while token_id <= context_end and offset[token_id][0] < start_char:
-            token_id += 1
-        start_token_pos = token_id
-        token_id = context_end
-        while token_id >= context_start and offset[token_id][1] > end_char:
-            token_id -= 1
-        end_token_pos = token_id
-        example_ids.append([sample_mapping[idx]])
-    print(answer, start_char, end_char, context_start, context_end, start_token_pos, end_token_pos)
-    print('token answer decode:',
-          tokenizer.decode(tokenized_examples['input_ids'][idx][start_token_pos:end_token_pos + 1]))
+
+
+# for idx, _ in enumerate(sample_mapping):
+#     answer = sample_dataset['answers'][sample_mapping[idx]]
+#     start_char = answer['answer_start'][0]
+#     end_char = start_char + len(answer['text'][0])
+#     # 定位答案在 token 中的其实位置和结束位置
+#     # 一种策略，我们要拿到 context 的起始和 结束，然后从左右两侧向答案逼近
+#     context_start = tokenized_examples.sequence_ids(idx).index(1)
+#     context_end = tokenized_examples.sequence_ids(idx).index(None, context_start) - 1
+#     offset = tokenized_examples.get('offset_mapping')[idx]
+#     example_ids = []
+#     # 判断答案是否在 context 中
+#     if offset[context_end][1] < start_char or offset[context_start][0] > end_char:
+#         start_token_pos = 0
+#         end_token_pos = 0
+#     else:
+#         token_id = context_start
+#         while token_id <= context_end and offset[token_id][0] < start_char:
+#             token_id += 1
+#         start_token_pos = token_id
+#         token_id = context_end
+#         while token_id >= context_start and offset[token_id][1] > end_char:
+#             token_id -= 1
+#         end_token_pos = token_id
+#         example_ids.append([sample_mapping[idx]])
+#     print(answer, start_char, end_char, context_start, context_end, start_token_pos, end_token_pos)
+#     print('token answer decode:',
+#           tokenizer.decode(tokenized_examples['input_ids'][idx][start_token_pos:end_token_pos + 1]))
 
 
 def process_func(examples):
@@ -218,8 +226,8 @@ model = AutoModelForQuestionAnswering.from_pretrained('/home/nanji/workspace/chi
 # Step7 配置TrainingArguments
 args = TrainingArguments(
     output_dir='models_for_qa',
-    per_device_train_batch_size=32,
-    per_device_eval_batch_size=32,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
     eval_strategy='steps',
     eval_steps=200,
     save_strategy='epoch',
