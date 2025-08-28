@@ -12,27 +12,30 @@ nltk.download('punkt_tab')
 '''
 # 基于截断策略的机器阅读理解任务实
 # Step1 导入相关包
+import os
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:3950"
+
 from datasets import load_dataset, DatasetDict
 from transformers import (AutoTokenizer,
                           AutoModelForQuestionAnswering,
                           TrainingArguments,
                           Trainer,
                           DefaultDataCollator)
-import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:3950"
+# print(os.environ["PYTORCH_CUDA_ALLOC_CONF"])
 ## Step2 数据集加载
 
 # 如果可以联网，直接使用load_dataset进行加载
 # datasets = load_dataset("cmrc2018", cache_dir="data")
 # 如果无法联网，则使用下面的方式加载数据集
 datasets = DatasetDict.load_from_disk("mrc_data")
-print(datasets)
-print('0' * 100)
-print(datasets['train'][0])
+# print(datasets)
+# print('0' * 100)
+# print(datasets['train'][0])
 # Step3 数据预处理
 tokenizer = AutoTokenizer.from_pretrained('/home/nanji/workspace/chinese-macbert-base')
-print('1' * 100)
-print(tokenizer)
+# print('1' * 100)
+# print(tokenizer)
 sample_dataset = datasets['train'].select(range(10))
 tokenized_examples = tokenizer(
     text=sample_dataset['question'],
@@ -45,13 +48,12 @@ tokenized_examples = tokenizer(
     padding='max_length',
 )
 
-print(tokenized_examples.data.keys())
-
-print(tokenized_examples['offset_mapping'][0], len(tokenized_examples['offset_mapping'][0]))
+# print(tokenized_examples.data.keys())
+# print(tokenized_examples['offset_mapping'][0], len(tokenized_examples['offset_mapping'][0]))
 # offset_mapping = tokenized_examples.pop('offset_mapping')
 
-print(tokenized_examples['overflow_to_sample_mapping'])
-print(len(tokenized_examples['overflow_to_sample_mapping']))
+# print(tokenized_examples['overflow_to_sample_mapping'])
+# print(len(tokenized_examples['overflow_to_sample_mapping']))
 # for sen in tokenizer.batch_decode(tokenized_examples['input_ids'][:3]):
 #     print(sen)
 
@@ -141,12 +143,12 @@ tokenized_datasets = datasets.map(
     batched=True,
     remove_columns=datasets['train'].column_names
 )
-print('0' * 100)
-print(tokenized_datasets)
-print('1' * 100)
-print(tokenized_datasets['train']['offset_mapping'][1])
-print('2' * 100)
-print(tokenized_datasets['train']['example_ids'][:10])
+# print('0' * 100)
+# print(tokenized_datasets)
+# print('1' * 100)
+# print(tokenized_datasets['train']['offset_mapping'][1])
+# print('2' * 100)
+# print(tokenized_datasets['train']['example_ids'][:10])
 
 import collections
 
@@ -154,8 +156,8 @@ import collections
 example_to_feature = collections.defaultdict(list)
 for idx, example_id in enumerate(tokenized_datasets['train']['example_ids'][:10]):
     example_to_feature[example_id].append(idx)
-print('3' * 100)
-print(example_to_feature)
+# print('3' * 100)
+# print(example_to_feature)
 # Step4 获取模型输出
 import numpy as np
 import collections
@@ -226,10 +228,10 @@ model = AutoModelForQuestionAnswering.from_pretrained('/home/nanji/workspace/chi
 # Step7 配置TrainingArguments
 args = TrainingArguments(
     output_dir='models_for_qa',
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
+    per_device_train_batch_size=32,
+    per_device_eval_batch_size=32,
     eval_strategy='steps',
-    eval_steps=200,
+    eval_steps=2,
     save_strategy='epoch',
     logging_steps=50,
     num_train_epochs=1
