@@ -1,0 +1,14 @@
+DatasetDict({
+    test: Dataset({
+        features: ['id', 'context', 'question', 'choice', 'answer'],
+        num_rows: 1625
+    })
+    train: Dataset({
+        features: ['id', 'context', 'question', 'choice', 'answer'],
+        num_rows: 11869
+    })
+    validation: Dataset({
+        features: ['id', 'context', 'question', 'choice', 'answer'],
+        num_rows: 3816
+    })
+})
