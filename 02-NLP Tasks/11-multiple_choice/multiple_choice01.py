@@ -10,17 +10,18 @@
 import evaluate
 from datasets import DatasetDict
 from transformers import (AutoTokenizer,
-                          AutoModelForMultipleChoice, TrainingArguments, Trainer)
+                          AutoModelForMultipleChoice, TrainingArguments, Trainer)  # Step2 加载数据集
 
-# Step2 加载数据集
 c3 = DatasetDict.load_from_disk("./c3/")
 # c3
 # c3["train"][:10]
 c3.pop("test")
 # Step3 数据集预处理
 # tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-macbert-base")
-tokenizer = AutoTokenizer.from_pretrained('D:/workspace/chinese-macbert-base')
-print(tokenizer)
+tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path="D:\\workspace\\chinese-macbert-base",from_tf=True)
+# BertForMultipleChoice
+
+# tokenizer
 
 def process_function(examples):
     # examples, dict, keys: ["context", "quesiton", "choice", "answer"]
@@ -59,33 +60,35 @@ def process_function(examples):
 import numpy as np
 
 # np.array(res["input_ids"]).shape
-
+res = c3["train"].select(range(10)).map(process_function, batched=True)
+# res
 tokenized_c3 = c3.map(process_function, batched=True)
-print(tokenized_c3)
+# tokenized_c3
 # Step4 创建模型
 # model = AutoModelForMultipleChoice.from_pretrained("hfl/chinese-macbert-base")
-model = AutoModelForMultipleChoice.from_pretrained('D:/workspace/chinese-macbert-base')# Step5 c创建评估函数
-import numpy as np
-
+# model = AutoModelForMultipleChoice.from_pretrained(pretrained_model_name_or_path="D:\\workspace\\chinese-macbert-base",from_tf=True)
+model = AutoModelForMultipleChoice.from_pretrained(pretrained_model_name_or_path="D:\\workspace\\chinese-macbert-base",from_tf=True)
+# model = AutoModelForMultipleChoice.from_pretrained('/home/nanji/workspace/chinese-macbert-base')
+# BertForMultipleChoice
+# accuracy = evaluate.load("accuracy")
 accuracy = evaluate.load("accuracy")
+
+
 def compute_metric(pred):
     predictions, labels = pred
     predictions = np.argmax(predictions, axis=-1)
-    return accuracy.compute(
-        predictions=predictions,
-        references=labels
-    )
+    return accuracy.compute(predictions=predictions, references=labels)
 
 
 # step6 配置训练参数
 args = TrainingArguments(
-    output_dir='./multiple_choice',
+    output_dir="./muliple_choice",
     per_device_train_batch_size=16,
     per_device_eval_batch_size=16,
     num_train_epochs=1,
     logging_steps=50,
-    eval_strategy='epoch',
-    save_strategy='epoch',
+    eval_strategy="epoch",
+    save_strategy="epoch",
     load_best_model_at_end=True,
     fp16=True
 )
@@ -94,9 +97,9 @@ trainer = Trainer(
     model=model,
     args=args,
     tokenizer=tokenizer,
-    train_dataset=tokenized_c3['train'],
-    eval_dataset=tokenized_c3['validation'],
-    compute_metric=compute_metric
+    train_dataset=tokenized_c3["train"],
+    eval_dataset=tokenized_c3["validation"],
+    compute_metrics=compute_metric
 )
 # step8 模型训练
 trainer.train()
@@ -106,29 +109,26 @@ import torch
 
 
 class MultipleChoicePipeline:
+
     def __init__(self, model, tokenizer) -> None:
         self.model = model
         self.tokenizer = tokenizer
         self.device = model.device
 
-    def preprocess(self, context, question, choices):
+    def preprocess(self, context, quesiton, choices):
         cs, qcs = [], []
         for choice in choices:
             cs.append(context)
-            qcs.append(question + '\t' + choice)
-        return tokenizer(cs,
-                         qcs,
-                         truncation="only_first",
-                         max_length=256,
-                         return_tensors="pt")
+            qcs.append(quesiton + " " + choice)
+        return tokenizer(cs, qcs, truncation="only_first", max_length=256, return_tensors="pt")
 
     def predict(self, inputs):
-        inputs = {k: v.uniqueeze(0).to(self.device) for k, v in inputs.items()}
+        inputs = {k: v.unsqueeze(0).to(self.device) for k, v in inputs.items()}
         return self.model(**inputs).logits
 
     def postprocess(self, logits, choices):
-        prediction = torch.argmax(logits, dim=-1).cpu().item()
-        return choices[prediction]
+        predition = torch.argmax(logits, dim=-1).cpu().item()
+        return choices[predition]
 
     def __call__(self, context, question, choices) -> Any:
         inputs = self.preprocess(context, question, choices)
@@ -138,5 +138,6 @@ class MultipleChoicePipeline:
 
 
 pipe = MultipleChoicePipeline(model, tokenizer)
+
 res = pipe("小明在北京上班", "小明在哪里上班？", ["北京", "上海", "河北", "海南", "河北", "海南"])
 print(res)

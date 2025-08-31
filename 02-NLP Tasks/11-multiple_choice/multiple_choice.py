@@ -20,6 +20,7 @@ c3.pop("test")
 # Step3 数据集预处理
 # tokenizer = AutoTokenizer.from_pretrained("hfl/chinese-macbert-base")
 tokenizer = AutoTokenizer.from_pretrained('/home/nanji/workspace/chinese-macbert-base')
+# tokenizer = AutoTokenizer.from_pretrained('D:/workspace/chinese-macbert-base')
 print(tokenizer)
 
 def process_function(examples):
@@ -64,6 +65,7 @@ tokenized_c3 = c3.map(process_function, batched=True)
 print(tokenized_c3)
 # Step4 创建模型
 # model = AutoModelForMultipleChoice.from_pretrained("hfl/chinese-macbert-base")
+# model = AutoModelForMultipleChoice.from_pretrained('D:/workspace/chinese-macbert-base')
 model = AutoModelForMultipleChoice.from_pretrained('/home/nanji/workspace/chinese-macbert-base')# Step5 c创建评估函数
 import numpy as np
 
