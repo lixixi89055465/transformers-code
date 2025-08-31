@@ -1,0 +1,8 @@
+trainer = Trainer(
+    model=model,
+    args=args,
+    tokenizer=tokenizer,
+    train_dataset=tokenized_c3["train"],
+    eval_dataset=tokenized_c3["validation"],
+    compute_metrics=compute_metric
+)
