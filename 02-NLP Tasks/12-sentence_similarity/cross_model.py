@@ -10,7 +10,7 @@
 import os
 
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:48"
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:48"
 from transformers import AutoTokenizer, \
     AutoModelForSequenceClassification, \
     TrainingArguments, \
