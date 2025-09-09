@@ -90,23 +90,23 @@ process_datasets = datasets.map(preprocess_function, batched=True)
 from datasets import load_from_disk
 
 # 保存与加载
-# process_datasets.save_to_disk('/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/processed_data')
+# process_datasets.save_to_disk('/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/processed_data')
 process_datasets = load_from_disk(
-    '/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/processed_data')
+    '/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/processed_data')
 # print('6' * 100)
 # print(process_datasets)
 # 加载本地数据集
 # 直接加载文件作为数据集
 # dataset = load_dataset('csv', data_files='./ChnSentiCorp_htl_all.csv', split='train')
 # dataset = Dataset.from_csv(
-#     '/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/ChnSentiCorp_htl_all.csv')
+#     '/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/ChnSentiCorp_htl_all.csv')
 # print('7' * 100)
 # print(dataset)
 # 加载文件夹内全部文件作为数据集
 # dataset = load_dataset('csv',
 #                        data_files=[
-#                            '/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/all_data/ChnSentiCorp_htl_all.csv',
-#                            '/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/all_data/ChnSentiCorp_htl_all copy.csv']
+#                            '/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/all_data/ChnSentiCorp_htl_all.csv',
+#                            '/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/all_data/ChnSentiCorp_htl_all copy.csv']
 #                        , split='train')
 # print('8' * 100)
 # print(dataset)
@@ -114,7 +114,7 @@ process_datasets = load_from_disk(
 # 直接加载文件作为数据集
 # dataset = load_dataset('csv',
 #                        data_files=[
-#                            '/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/ChnSentiCorp_htl_all.csv']
+#                            '/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/ChnSentiCorp_htl_all.csv']
 #                        , split='train')
 #
 # print('9' * 100)
@@ -128,7 +128,7 @@ process_datasets = load_from_disk(
 ## 通过预先加载的其他格式转换加载数据集
 import pandas as pd
 
-data = pd.read_csv('/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/ChnSentiCorp_htl_all.csv')
+data = pd.read_csv('/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/ChnSentiCorp_htl_all.csv')
 print('0' * 100)
 print(data.head())
 dataset = Dataset.from_pandas(data)
@@ -142,9 +142,9 @@ print(Dataset.from_list(data))
 # 通过自定义加载脚本加载数据集
 
 load_dataset('json',
-             data_files='/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/cmrc2018_trial.json',
+             data_files='/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/cmrc2018_trial.json',
              field='data')
-dataset = load_dataset('/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/', split='train')
+dataset = load_dataset('/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/', split='train')
 
 print('3' * 100)
 print(dataset[0])
@@ -152,7 +152,7 @@ print(dataset[0])
 from transformers import DataCollatorWithPadding
 
 dataset = load_dataset('csv',
-                       data_files='/home/nanji/workspace/transformers-code/01-Getting Started/05-datasets/ChnSentiCorp_htl_all.csv',
+                       data_files='/home/nanji/workspace/transformers-code/01-Getting_Started/05-datasets/ChnSentiCorp_htl_all.csv',
                        split='train')
 dataset = dataset.filter(lambda x: x['review'] is not None)
 print('4' * 100)

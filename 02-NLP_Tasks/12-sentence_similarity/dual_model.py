@@ -161,8 +161,8 @@ def eval_metric(eval_predict):
 
 # Step7 创建TrainingArguments
 train_args = TrainingArguments(output_dir="./dual_model",  # 输出文件夹
-                               per_device_train_batch_size=32,  # 训练时的batch_size
-                               per_device_eval_batch_size=32,  # 验证时的batch_size
+                               per_device_train_batch_size=64,  # 训练时的batch_size
+                               per_device_eval_batch_size=64,  # 验证时的batch_size
                                logging_steps=10,  # log 打印的频率
                                eval_strategy="epoch",  # 评估策略
                                save_strategy="epoch",  # 保存策略
