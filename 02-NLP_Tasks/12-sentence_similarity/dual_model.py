@@ -222,3 +222,4 @@ class SentenceSimilarityPipeline:
 pipe = SentenceSimilarityPipeline(model, tokenizer)
 a = pipe('我喜欢北京', '明天不行', return_vector=True)
 print(a)
+# modelscope download --model langboat/bloom-389m-zh --local_dir ./bloom-389m-zh
