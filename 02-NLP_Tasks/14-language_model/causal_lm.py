@@ -46,7 +46,7 @@ model = AutoModelForCausalLM.from_pretrained("/home/nanji/workspace/bloom-389m-z
 # Step5 配置训练参数
 args = TrainingArguments(
     output_dir='./causal_lm',
-    per_device_train_batch_size=2,
+    per_device_train_batch_size=16,
     gradient_accumulation_steps=16,
     logging_steps=10,
     num_train_epochs=1,
