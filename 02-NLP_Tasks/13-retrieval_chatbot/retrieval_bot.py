@@ -46,31 +46,3 @@ with torch.inference_mode():
 
 vectors=torch.concat(vectors,dim=0).cpu().numpy()
 print(vectors.shape)
-
-# step4 创建缩影
-import faiss
-index=faiss.IndexFlatIP(768)
-faiss.normalize_L2(vectors)
-index.add(vectors)
-print(index)
-# step5
-question='寻衅滋事'
-with torch.inference_mode():
-    inputs=tokenizer(question, return_tensors='pt'
-                     ,padding=True,max_length=128,
-                     truncation=True)
-    inputs={
-        k:v.to(dual_model.device)
-        for k,v in inputs.items()
-    }
-    vector=dual_model.bert(**inputs)
-    q_vector=vector.cpu().numpy()
-
-print(q_vector.shape)
-
-# step6 向量匹配 （ 召回 )
-faiss.normalize_L2(q_vector)
-scores,indexs=index.search(q_vector,10)
-topk_result=data.values[indexs[0].tolist()]
-
-print(topk_result[:, 0])
