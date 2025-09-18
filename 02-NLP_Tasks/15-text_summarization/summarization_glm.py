@@ -26,11 +26,13 @@ print(ds['train'][0])
 # THUDM\glm-large-chinese\230f54e413fab4bc8f29bd3508aab301d757ef3e\tokenization_glm.py
 # 231行 super().__init__(**kwargs) 移动至 235行，
 # 放至self.sp_model.Load(vocab_file)的后面一行
-tokenizer = AutoTokenizer.from_pretrained('/home/nanji/workspace/glm-large-chinese', trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained('/home/nanji/workspace/glm-large-chinese',
+                                          trust_remote_code=True )
 print(tokenizer)
 contents = ['摘要生成: \n' + e + tokenizer.mask_token for e in ds['train']['content'][:10]]
 inputs = tokenizer(contents, truncation=True, max_length=384, padding='max_length', return_tensors='pt')
-inputs1 = tokenizer.build_inputs_for_generation(inputs, targets=ds['train']['title'][:10], padding=True, max_gen_length=64)
+inputs1 = tokenizer.build_inputs_for_generation(inputs, targets=ds['train']['title'][:10], padding=True,
+                                                max_gen_length=64)
 
 
 def process_func(examples):
@@ -41,6 +43,7 @@ def process_func(examples):
 
 
 tokenized_ds = ds.map(process_func, batched=True, remove_columns=ds["train"].column_names)
+
 print(tokenized_ds)
 
 a = tokenizer.decode(tokenized_ds["train"][0]["input_ids"])
@@ -65,12 +68,56 @@ trainer = Seq2SeqTrainer(
     tokenizer=tokenizer,
 )
 # Step8 模型训练
-trainer.train()
+# trainer.train()
 ## Step9 模型推理
-input_text = ds['test'][-1]['content']
-inputs = tokenizer("摘要生成:\n" + input_text + tokenizer.mask_token, return_tensors="pt")
-inputs = inputs.to('cuda')
-output = model.generate(**inputs, max_new_tokens=64, eos_token_id=tokenizer.eop_token_id, do_sample=True)
+input_text = ds["test"][-1]["content"]
+inputs = tokenizer("摘要生成: \n" + input_text + tokenizer.mask_token, return_tensors="pt")
+inputs = tokenizer.build_inputs_for_generation(inputs, max_gen_length=64)
+inputs = inputs.to("cuda")
+output = model.generate(**inputs, max_new_tokens=64,
+                        eos_token_id=tokenizer.eop_token_id, do_sample=True)
+tokenizer.decode(output[0].tolist())
 
-t1 = tokenizer.decode(output[0].tolist())
-print(t1)
+import torch
+
+model = model.eval()
+
+
+def predict_test():
+    predict = []
+    with torch.inference_mode():
+        for d in ds['test']:
+            inputs = tokenizer('摘要生成:\n' + d['content'] + tokenizer.mask_token, return_tensors="pt")
+            inputs1 = tokenizer.build_inputs_for_generation(
+                inputs,
+                max_gen_length=64
+            )
+            inputs = inputs1.to('cuda')
+            output = model.generate(**inputs,
+                                    max_new_tokens=64,
+                                    eos_token_id=tokenizer.eop_token_id,
+                                    do_sample=True)
+            predict.append(
+                tokenizer.decode(
+                    output[0].tolist()
+                ).split("<|startofpiece|>")[1].replace("<|endofpiece|>", "").strip()
+            )
+            print('curID:', len(predict))
+    return predict
+
+
+result = predict_test()
+from rouge_chinese import Rouge
+
+rouge = Rouge()
+decode_preds = [" ".join(p) for p in result]
+decode_labels = [" ".join(l) for l in ds['test']['title']]
+
+score = rouge.get_scores(
+    decode_preds, decode_labels, avg=True
+)
+{
+    'rouge-1': score['rouge-1']['f'],
+    'rouge-2': score['rouge-2']['f'],
+    'rouge-l': score['rouge-l']['f'],
+}
