@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-# @Time : 2025/9/21 13:20
+# @Time : 2025/9/21 14:53
 # @Author : nanji
 # @Site : 
-# @File : chatbot_prefix_tuning.py
+# @File : chatbot_lora.py
 # @Software: PyCharm
 # @Comment :
-# Prefix-Tuning 实战
+# Lora 实战
 # Step1 导入相关包
 from datasets import Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForLanguageModeling, Trainer, \
-    TrainingArguments
+from transformers import AutoTokenizer, AutoModelForCausalLM, \
+    DataCollatorForSeq2Seq, TrainingArguments, Trainer
 
 # Step2 加载数据集
 ds = Dataset.load_from_disk("../data/alpaca_data_zh/")
@@ -17,6 +17,7 @@ ds = Dataset.load_from_disk("../data/alpaca_data_zh/")
 tokenizer = AutoTokenizer.from_pretrained("/home/sdb2/workspace/bloom-1b4-zh")
 
 
+# tokenizer
 def process_func(example):
     MAX_LENGTH = 256
     input_ids, attention_mask, labels = [], [], []
@@ -38,48 +39,59 @@ def process_func(example):
 
 
 tokenized_ds = ds.map(process_func, remove_columns=ds.column_names)
-tokenized_ds
-
-a = tokenizer.decode(tokenized_ds[1]['input_ids'])
-b = tokenizer.decode(list(filter(lambda x: x != -100, tokenized_ds[1]['labels'])))
+# ipt= tokenizer("Human: {}\n{}".format("考试有哪些技巧？", "").strip()
+#                 + "\n\nAssistant: ", return_tensors="pt").to(
+#     model.device)
+a = tokenizer.decode(tokenized_ds[1]["input_ids"])
+print(a)
+b = tokenizer.decode(list(filter(lambda x: x != -100, tokenized_ds[1]["labels"])))
+print(b)
+## Step4 创建模型
 model = AutoModelForCausalLM.from_pretrained("/home/sdb2/workspace/bloom-1b4-zh")
-## Prefix-tuning
+for name, parameter in model.named_parameters():
+    print(name)
+
+## Lora
 ### PEFT Step1 配置文件
-from peft import PrefixTuningConfig, get_peft_model, TaskType
+from peft import LoraConfig, TaskType, get_peft_model
 
-config = PrefixTuningConfig(task_type=TaskType.CAUSAL_LM,
-                            num_virtual_tokens=10,
-                            prefix_projection=True)
-
+config = LoraConfig(
+    task_type=TaskType.CAUSAL_LM,
+    target_modules=".*\.1.*query_key_value",
+    modules_to_save=['word_embeddings']
+)
 print(config)
 # PEFT Step2 创建模型
-
 model = get_peft_model(model, config)
-print(model.prompt_encoder)
+
+print(config)
+for name, parameter in model.named_parameters():
+    print(name)
 model.print_trainable_parameters()
+
 ## Step5 配置训练参数
 args = TrainingArguments(
-    output_dir="./chatbot",
+    output_dir='./chatbot',
     per_device_train_batch_size=1,
     gradient_accumulation_steps=8,
     logging_steps=10,
     num_train_epochs=1
 )
-## Step6 创建训练器
+# Step6 创建训练器
 trainer = Trainer(
     model=model,
     args=args,
     tokenizer=tokenizer,
     train_dataset=tokenized_ds,
-    data_collator=DataCollatorForLanguageModeling(
-        tokenizer=tokenizer, padding=True
-    )
+    data_collator=DataCollatorForSeq2Seq(tokenizer=tokenizer, padding=True)
 )
 ## Step7 模型训练
 trainer.train()
-## Step8 模型推理
 model = model.cuda()
-ipt = tokenizer("Human: {}\n{}".format("考试有哪些技巧？", "").strip() +
-                "\n\nAssistant: ", return_tensors="pt").to(model.device)
-g=tokenizer.decode(model.generate(**ipt, max_length=128, do_sample=True)[0], skip_special_tokens=True)
-print(g)
+ipt = tokenizer(
+    "Human: {}\n{}".format("考试有哪些技巧？", "").strip() + "\n\nAssistant: ",
+    return_tensors="pt"
+).to(model.device)
+
+tokenizer.decode(model.generate(**ipt, max_length=128, do_sample=True)[0],
+                 skip_special_tokens=True)

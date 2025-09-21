@@ -1,0 +1,5 @@
+modelscope download --model modelscope/Llama-2-7b-ms --local_dir ./Llama-2-7b-ms
+
+modelscope download --model ZhipuAI/chatglm2-6b  --local_dir ./chatglm2-6b
+
+modelscope download --model ZhipuAI/chatglm3-6b-base --local_dir ./chatglm3-6b-base
