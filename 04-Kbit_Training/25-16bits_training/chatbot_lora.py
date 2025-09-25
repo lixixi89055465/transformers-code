@@ -5,28 +5,35 @@
 # @File : chatbot_lora.py
 # @Software: PyCharm
 # @Comment :
+import os
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # Lora 实战
 ## Step1 导入相关包
 from datasets import Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForSeq2Seq, TrainingArguments, Trainer
+from transformers import AutoTokenizer, \
+    AutoModelForCausalLM, \
+    DataCollatorForSeq2Seq, \
+    TrainingArguments, Trainer
 
 ## Step2 加载数据集
 ds = Dataset.load_from_disk("../data/alpaca_data_zh/")
 ## Step3 数据集预处理
-tokenizer = AutoTokenizer.from_pretrained(
-    "/home/nanji/workspace/Llama-2-7b-ms",
-    trust_remote_code=True)
+tokenizer = AutoTokenizer.from_pretrained( \
+    "/home/nanji/workspace/Llama-2-7b-ms")
 print(tokenizer)
+
+
 # tokenizer.padding_side='right'
+
 
 def process_func(example):
     MAX_LENGTH = 384
     input_ids, attention_mask, labels = [], [], []
     instruction = "\n".join(
-        ["Human: " + example["instruction"], example["input"]]).strip() + "\n\n Assistant: "  # query
-    instruction = tokenizer(instruction,add_special_tokens=False)
-    response = tokenizer(example["output"] + tokenizer.eos_token,add_special_tokens=False)
+        ["Human: " + example["instruction"], example["input"]]).strip() + "\n\nAssistant: "  # query
+    instruction = tokenizer(instruction, add_special_tokens=False)
+    response = tokenizer(example["output"] + tokenizer.eos_token, add_special_tokens=False)
     input_ids = instruction["input_ids"] + response["input_ids"]
     attention_mask = instruction["attention_mask"] + response["attention_mask"]
     labels = [-100] * len(instruction["input_ids"]) + response["input_ids"]
@@ -60,7 +67,9 @@ import torch
 model = AutoModelForCausalLM.from_pretrained(
     '/home/nanji/workspace/Llama-2-7b-ms', \
     low_cpu_mem_usage=True, \
-    torch_dtype=torch.half)
+    torch_dtype=torch.half, \
+    device_map='auto'
+)
 
 print(model)
 print("5" * 100)
@@ -87,6 +96,7 @@ print(config)
 print(model)
 
 model.print_trainable_parameters()
+model.enable_input_require_grads()
 for name, parameter in model.named_parameters():
     print(name)
 # step5 配置训练参数
@@ -97,7 +107,8 @@ args = TrainingArguments(
     gradient_accumulation_steps=8,
     logging_steps=10,
     num_train_epochs=1,
-    # learning_rate=1e-4,
+    gradient_checkpointing=True,
+    adam_epsilon=1e-4
     # remove_unused_columns=False,
     # save_strategy="epoch"
 )
