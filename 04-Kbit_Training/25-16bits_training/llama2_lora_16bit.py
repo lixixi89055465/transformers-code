@@ -22,6 +22,7 @@ print(
 tokenizer = AutoTokenizer.from_pretrained("/home/nanji/workspace/Llama-2-7b-ms")
 print(tokenizer)
 tokenizer.padding_side = 'right'  # # 一定要设置padding_side为right，否则batch大于1时可能不收敛
+print(tokenizer.eos_token_id) # 2
 tokenizer.pad_token_id = 2
 
 
@@ -44,5 +45,72 @@ def process_func(example):
         "attention_mask": attention_mask,
         "labels": labels
     }
+
+
 tokenized_ds = ds.map(process_func, remove_columns=ds.column_names)
 print(tokenized_ds)
+print(tokenized_ds[0]["input_ids"])
+# tokenizer("abc " + tokenizer.eos_token)
+a = tokenizer.decode(tokenized_ds[0]["input_ids"])
+# tokenizer("呀", add_special_tokens=False) # Llama分词器会将一个中文字切分为多个token，因此需要放开一些最大长度，保证数据的完整性
+
+b = tokenizer.decode(list(filter(lambda x: x != -100, tokenized_ds[1]["labels"])))
+print(b)
+# Step4 创建模型
+import torch
+
+# 多卡情况，可以去掉device_map="auto"，否则会将模型拆开
+model = AutoModelForCausalLM.from_pretrained(
+    "/home/nanji/workspace/Llama-2-7b-ms", \
+    low_cpu_mem_usage=True, \
+    torch_dtype=torch.bfloat16, \
+    device_map="auto")
+print(model.dtype)
+## Lora
+# PEFT Step1 配置文件
+from peft import LoraConfig, TaskType, get_peft_model
+
+config = LoraConfig(task_type=TaskType.CAUSAL_LM, )
+print(config)
+# PEFT Step2 创建模型
+model = get_peft_model(model, config)
+print(config)
+model.enable_input_require_grads()  # 开启梯度检查点时，要执行该方法
+model = model.half()  # 当整个模型都是半精度时，需要将adam_epsilon调大
+# torch.tensor(1e-8).half()
+model.print_trainable_parameters()
+from torch.utils.data import DataLoader
+
+dl = DataLoader(tokenized_ds, \
+                batch_size=2, \
+                collate_fn=DataCollatorForSeq2Seq(tokenizer=tokenizer, padding=True))
+ipt = next(enumerate(dl))[1]
+# print(ipt)
+d = model(**ipt.to("cuda"))
+# print(d)
+# Step5 配置训练参数
+args = TrainingArguments(
+    output_dir="./chatbot",
+    per_device_train_batch_size=1,
+    gradient_accumulation_steps=16,
+    logging_steps=10,
+    num_train_epochs=1,
+    adam_epsilon=1e-4
+)
+## Step6 创建训练器
+trainer = Trainer(
+    model=model,
+    args=args,
+    tokenizer=tokenizer,
+    train_dataset=tokenized_ds.select(range(6000)),
+    data_collator=DataCollatorForSeq2Seq(tokenizer=tokenizer, padding=True),
+)
+# Step7 模型训练
+trainer.train()
+## Step8 模型推理
+model.eval()
+ipt = tokenizer("Human: {}\n{}".format("你好", "").strip() + "\n\nAssistant: ", \
+                return_tensors="pt" \
+                ).to(model.device)
+tokenizer.decode(model.generate(**ipt, max_length=512, do_sample=True, eos_token_id=tokenizer.eos_token_id)[0],
+                 skip_special_tokens=True)

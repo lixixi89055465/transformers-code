@@ -5,3 +5,5 @@ modelscope download --model ZhipuAI/chatglm2-6b  --local_dir ./chatglm2-6b
 modelscope download --model ZhipuAI/chatglm3-6b-base --local_dir ./chatglm3-6b-base
 
 modelscope download --model ZhipuAI/chatglm3-6b --local_dir ./chatglm3-6b
+
+modelscope download --model ZhipuAI/chatglm3-6b-base README.md --local_dir ./dir
