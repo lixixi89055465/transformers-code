@@ -22,7 +22,7 @@ print(
 tokenizer = AutoTokenizer.from_pretrained("/home/nanji/workspace/Llama-2-7b-ms")
 print(tokenizer)
 tokenizer.padding_side = 'right'  # # 一定要设置padding_side为right，否则batch大于1时可能不收敛
-print(tokenizer.eos_token_id) # 2
+print(tokenizer.eos_token_id)  # 2
 tokenizer.pad_token_id = 2
 
 
@@ -63,8 +63,9 @@ import torch
 model = AutoModelForCausalLM.from_pretrained(
     "/home/nanji/workspace/Llama-2-7b-ms", \
     low_cpu_mem_usage=True, \
-    torch_dtype=torch.bfloat16, \
-    device_map="auto")
+    torch_dtype=torch.half, \
+    device_map="auto",\
+    load_in_8bit=True)
 print(model.dtype)
 ## Lora
 # PEFT Step1 配置文件
