@@ -1,0 +1,1 @@
+modelscope download --model dienstag/chinese-roberta-wwm-ext --local_dir ./chinese-roberta-wwm-ext
