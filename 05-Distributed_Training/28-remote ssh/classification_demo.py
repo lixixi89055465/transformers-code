@@ -26,7 +26,6 @@ import torch
 tokenizer = AutoTokenizer.from_pretrained('/home/nanji/workspace/rbt3')
 
 
-
 def process_function(examples):
     tokenized_examples = tokenizer(examples['review'], \
                                    max_length=128, \
@@ -35,14 +34,18 @@ def process_function(examples):
     return tokenized_examples
 
 
-tokenized_datasets = datasets.map(process_function,\
+tokenized_datasets = datasets.map(process_function, \
                                   batched=True, \
                                   remove_columns=datasets['train'].column_names)
 print(tokenized_datasets)
 # Step5 创建模型
 # model = BertForSequenceClassification.from_pretrained("/home/nanji/workspace/chinese-macbert-base")
-model = BertTokenizer.from_pretrained("/home/nanji/workspace/chinese-macbert-base")
+model = BertForSequenceClassification.from_pretrained('/home/nanji/workspace/chinese-roberta-wwm-ext')
 print(model.config)
+
+# TODO 参数 实例化 contiguous()
+for param in model.parameters():
+    param.data = param.data.contiguous()
 # Step6 创建评估函数
 
 import evaluate
@@ -69,6 +72,7 @@ train_args = TrainingArguments(
     evaluation_strategy='epoch',  # 评估策略
     save_strategy='epoch',  # 保持策略
     save_total_limit=3,
+    learning_rate=2e-5,
     weight_decay=0.01,  # weight_decay
     metric_for_best_model='f1',  # 设定评估指标
     load_best_model_at_end=True
@@ -89,5 +93,3 @@ trainer = Trainer(
 trainer.train()
 # Step10 模型评估
 trainer.evaluate(tokenized_datasets["test"])
-
-
