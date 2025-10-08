@@ -79,6 +79,12 @@ model = AutoModelForSequenceClassification.from_pretrained('/home/nanji/workspac
 if torch.cuda.is_available():
     model = model.cuda()
 
+model = torch.nn.DataParallel(model, device_ids=None)
+
+print(model.device_ids)
+print(model)
+print(model.module)
+
 optimizer = Adam(model.parameters(), lr=2e-5)
 
 
@@ -105,19 +111,34 @@ def train(epoch=3, log_step=100):
                 batch = {k: v.cuda() for k, v in batch.items()}
             optimizer.zero_grad()
             output = model(**batch)
-            output.loss.backward()
+            print(output)
+            output.loss.mean().backward()
             optimizer.step()
             if global_step % log_step == 0:
-                print(f'ep : {ep},global_step : {global_step},loss: {output.loss.item()}')
+                print(f'ep : {ep},global_step : {global_step},loss: {output.loss.mean().item()}')
             global_step += 1
         acc = evaluate()
         print(f'ep: {ep},acc:{acc}')
 
 
 train()
+replicas = model.replicate(model.module, model.device_ids[:2])
 # step9 模型预测
 sen = '我觉得这家酒店不错，饭很好吃 '
 id2_label = {0: "差评", 1: "好评!"}
 model.eval()
 with torch.inference_mode():
-    inputs=tokenizer(sen,return_tensors='pt')
+    for batch in trainloader:
+        if torch.cuda.is_available():
+            batch = {k: v.cuda() for k, v in batch.items}
+        # output = model(**batch)
+        inputs, module_kwargs = model.scatter(
+            inputs=None,
+            kwargs=batch,
+            device_ids=model.device_ids
+        )
+        outputs = model.parallel_apply(replicas,  #
+                                       inputs, module_kwargs)
+        outputs = model.gather(outputs, model.output_device)
+        print(outputs)
+print(model.device_ids)

@@ -69,7 +69,7 @@ for i in range(5):
 # %%
 import torch
 
-tokenizer = BertTokenizer.from_pretrained("/gemini/code/model")
+tokenizer = BertTokenizer.from_pretrained("/home/nanji/workspace/chinese-roberta-wwm-ext")
 
 def collate_func(batch):
     texts, labels = [], []
@@ -98,7 +98,7 @@ from torch.optim import Adam
 import os
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-model = BertForSequenceClassification.from_pretrained("/gemini/code/model")
+model = BertForSequenceClassification.from_pretrained("/home/nanji/workspace/chinese-roberta-wwm-ext")
 
 if torch.cuda.is_available():
     model = model.to(int(os.environ["LOCAL_RANK"]))
